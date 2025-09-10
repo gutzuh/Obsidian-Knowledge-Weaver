@@ -18,5 +18,13 @@ export interface GeminiResponse {
   topicos_correlacionados: Array<{
     titulo_sugerido: string;
     conteudo_explicativo: string;
+    exemplos_praticos?: string[];
+    exercicios_praticos?: string[];
+    questoes_fixacao?: string[];
+    flashcards?: Array<{ pergunta: string; resposta: string }>;
+    recursos?: Array<{ titulo: string; url: string }>;
+    dificuldade?: string;
+    estimativa_tempo_minutos?: number | null;
+    [key: string]: any;
   }>;
 }

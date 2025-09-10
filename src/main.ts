@@ -211,5 +211,33 @@ function stripFrontmatter(text: string) {
 }
 
 function buildPrompt(content: string) {
-  return `System: Você é um especialista em análise de conteúdo e síntese de conhecimento. Sua tarefa é ler o texto fornecido, extrair os conceitos essenciais e sugerir novos tópicos de exploração. Responda estritamente no formato JSON, conforme o schema abaixo.\n\nSchema JSON de Resposta:\n{\n  "resumo_conciso": "string",\n  "pontos_chave": ["string"],\n  "topicos_correlacionados": [\n    {\n      "titulo_sugerido": "string",\n      "conteudo_explicativo": "string"\n    }\n  ]\n}\n\nTexto para Análise:\n"""\n${content}\n"""`;
+  return `System: Você é um especialista em análise de conteúdo e síntese de conhecimento. Sua tarefa é ler o texto fornecido, extrair os conceitos essenciais e sugerir novos tópicos de exploração. Responda estritamente com JSON válido seguindo o schema descrito abaixo.\n\nSchema JSON de Resposta (preencha tudo que for aplicável):\n{\n  "resumo_conciso": "string",\n  "pontos_chave": ["string"],\n  "topicos_correlacionados": [\n    {\n      "titulo_sugerido": "string",\n      "conteudo_explicativo": "string",\n      "exemplos_praticos": ["string"],\n      "exercicios_praticos": ["string"],\n      "questoes_fixacao": ["string"],\n      "flashcards": [{ "pergunta": "string", "resposta": "string" }],\n      "recursos": [{ "titulo": "string", "url": "string" }],\n      "dificuldade": "string", // iniciante|intermediario|avancado\n      "estimativa_tempo_minutos": 15\n    }\n  ]\n}\n\nInstruções importantes:\n- Retorne somente o JSON (sem texto explicativo fora do JSON).\n- Se algum campo não se aplicar, retorne string vazia ou lista vazia.\n- Use linguagem clara e exemplos práticos curtos em "exemplos_praticos".\n- Produza exatamente 3 tópicos correlacionados e para cada tópico inclua exatamente 3 itens em "exercicios_praticos" quando possível (se não for possível, use listas vazias para os campos faltantes).\n\nTexto para Análise:\n"""\n${content}\n"""`;
 }
+
+    // this.addCommand({
+    //   id: 'kw-dry-run-analyze',
+    //   name: 'Knowledge Weaver: Dry-run analyze (show planned files)',
+    //   callback: async () => {
+    //     const app = this.app!;
+    //     const file = app.workspace.getActiveFile();
+    //     if (!file) { new Notice('No active file to analyze.'); return; }
+    //     try {
+    //       const text = await app.vault.read(file as any);
+    //       const content = stripFrontmatter(text);
+    //       const prompt = buildPrompt(content);
+    //       const resp = await callGeminiApi(this.settings!, prompt as any);
+    //       const cache = app.metadataCache.getFileCache(file) as any | undefined;
+    //       const tagsField = cache ? cache.frontmatter?.tags : undefined;
+    //       let tags: string[] = [];
+    //       if (Array.isArray(tagsField)) tags = tagsField.map((t: any) => String(t));
+    //       else if (typeof tagsField === 'string') tags = tagsField.split(/\s*,\s*/).map(s => s.trim()).filter(Boolean);
+    //       const original: NoteNode = { path: file.path, title: file.basename, tags, status: 'analyzed' };
+    //       if (!resp) { new Notice('No response from Gemini.'); return; }
+    //       const created = await createNotesFromGemini(app, this.settings!, original, resp as any, true);
+    //       new Notice(`Dry-run complete. ${created} files would be created (see logs).`);
+    //     } catch (e: any) {
+    //       console.error(e);
+    //       new Notice('Dry-run failed. Veja o console para detalhes.');
+    //     }
+    //   }
+    // });

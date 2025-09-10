@@ -69,6 +69,14 @@ export async function callGeminiApi(settings: KnowledgeWeaverSettings, prompt: s
   if (data.candidates && Array.isArray(data.candidates) && data.candidates[0]) {
     const cand = data.candidates[0];
     if (typeof cand.content === 'string') candidateText = cand.content;
+    else if (cand.content && typeof cand.content === 'object') {
+      // handle { parts: [{ text: '...' }, ...] }
+      if (Array.isArray(cand.content.parts)) {
+        candidateText = cand.content.parts.map((p: any) => (typeof p === 'string' ? p : (p.text || JSON.stringify(p)))).join('\n');
+      } else if (typeof cand.content.text === 'string') {
+        candidateText = cand.content.text;
+      }
+    }
     else if (Array.isArray(cand.output) && cand.output[0]) {
       const out = cand.output[0];
       // output[0].content may be array of { text }
@@ -92,11 +100,65 @@ export async function callGeminiApi(settings: KnowledgeWeaverSettings, prompt: s
   if (!candidateText) candidateText = JSON.stringify(data);
 
   // The assistant should respond with strict JSON matching the plugin schema. Try to parse the candidate text.
-  try {
-    const parsed = typeof candidateText === 'string' ? JSON.parse(candidateText) : candidateText;
-    return parsed as GeminiResponse;
-  } catch (err) {
-    // If parsing fails, include the raw response in the error for debugging
+  if (typeof candidateText !== 'string') return candidateText as GeminiResponse;
+
+  // strip common code fences and leading labels like ```json
+  candidateText = candidateText.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+
+  // Quick attempt: direct parse
+  try { return JSON.parse(candidateText) as GeminiResponse; } catch (e) {
+    // try to locate a JSON object inside the text (many models wrap JSON in markdown or comments)
+    const jsonMatch = candidateText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try { return JSON.parse(jsonMatch[0]) as GeminiResponse; } catch (e2) {
+        throw new Error('Unable to parse embedded JSON from Gemini response. Excerpt: ' + jsonMatch[0].slice(0, 1000));
+      }
+    }
+    // As an additional fallback, search the entire raw response (stringified) for a code-fenced JSON block
+    try {
+      const raw = JSON.stringify(data);
+      const codeFence = raw.match(/```json\\n([\s\S]*?)\\n```/);
+      if (codeFence && codeFence[1]) {
+        try { return JSON.parse(codeFence[1]) as GeminiResponse; } catch (e3) {
+          // try less strict: find first {...} inside the captured group
+          const inner = codeFence[1].match(/\{[\s\S]*\}/);
+          if (inner) return JSON.parse(inner[0]) as GeminiResponse;
+        }
+      }
+    } catch (e) {
+      // swallow and continue to final error below
+    }
+    // If still failing, throw with excerpt
+    // As a stronger fallback, search all string fields inside `data` for embedded JSON/code-fenced JSON
+    try {
+      function collectStrings(obj: any, out: string[]) {
+        if (obj == null) return;
+        if (typeof obj === 'string') { out.push(obj); return; }
+        if (typeof obj === 'number' || typeof obj === 'boolean') return;
+        if (Array.isArray(obj)) { for (const v of obj) collectStrings(v, out); return; }
+        if (typeof obj === 'object') { for (const k of Object.keys(obj)) collectStrings((obj as any)[k], out); }
+      }
+      const parts: string[] = [];
+      collectStrings(data, parts);
+      const big = parts.join('\n');
+      // look for code fence
+      const cf = big.match(/```json\s*([\s\S]*?)\s*```/i);
+      if (cf && cf[1]) {
+        try { return JSON.parse(cf[1]) as GeminiResponse; } catch (e3) { /* continue */ }
+      }
+      // otherwise try to find any JSON object fragment that parses and contains expected keys
+      const objRegex = /\{[\s\S]*?\}/g;
+      let m: RegExpExecArray | null;
+      while ((m = objRegex.exec(big)) !== null) {
+        try {
+          const cand = JSON.parse(m[0]);
+          if (cand && (cand.topicos_correlacionados || cand.pontos_chave || cand.resumo_conciso)) return cand as GeminiResponse;
+        } catch (e4) { /* ignore */ }
+      }
+    } catch (e) {
+      // ignore and fall through to throw
+    }
+
     throw new Error('Unable to parse Gemini response as JSON. Raw response excerpt: ' + candidateText.slice(0, 1000));
   }
 }
