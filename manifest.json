@@ -1,0 +1,10 @@
+{
+  "id": "knowledge-weaver",
+  "name": "Knowledge Weaver",
+  "version": "0.1.0",
+  "minAppVersion": "0.12.0",
+  "description": "Assistente de IA para análise e geração de notas relacionadas no Obsidian",
+  "author": "",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}

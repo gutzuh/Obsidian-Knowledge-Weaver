@@ -1,0 +1,21 @@
+{
+  "name": "obsidian-knowledge-weaver",
+  "version": "0.1.0",
+  "description": "Knowledge Weaver: Assistente de IA para Análise e Conexão de Notas no Obsidian",
+  "main": "dist/main.js",
+  "scripts": {
+  "build": "tsc -p .",
+  "bundle": "esbuild src/main.ts --bundle --platform=node --target=node16 --outfile=dist/main.js --external:obsidian --format=cjs --sourcemap",
+  "watch": "tsc -p . -w",
+  "test-runner": "ts-node scripts/test-runner.ts",
+  "install-to-obsidian": "npm run bundle && node scripts/install-plugin.js /home/isqne/Documents/MindLess/.obsidian/plugins/ knowledge-weaver",
+  "import-example-data": "node scripts/import-datajson.js \"EXAMPLE PROJECT/data.json\" /home/isqne/Documents/MindLess/.obsidian/plugins/knowledge-weaver"
+  },
+  "devDependencies": {
+  "@types/node": "^18.0.0",
+  "obsidian": "^1.8.7",
+  "typescript": "^5.0.0",
+  "ts-node": "^10.0.0",
+  "esbuild": "^0.18.0"
+  }
+}
